@@ -48,8 +48,7 @@ the type of component:
 get_hyperparameter_search_space()
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Return an instance of ``HPOlibConfigSpace.configuration_space
-.ConfigurationSpace``.
+Return an instance of ``ConfigSpace.configuration_space.ConfigurationSpace``.
 
 See also the abstract definitions:
 :meth:`AutoSklearnClassificationAlgorithm.get_hyperparameter_search_space() <autosklearn.pipeline.components.base.AutoSklearnClassificationAlgorithm.get_hyperparameter_search_space>`
@@ -128,7 +127,7 @@ you have to implement
 and
 :meth:`AutoSklearnClassificationAlgorithm.predict() <autosklearn.pipeline.components.base.AutoSklearnClassificationAlgorithm.predict>`
 . These are an implementation of the `scikit-learn predictor API
-<http://scikit-learn.org/stable/developers/index.html#apis-of-scikit-learn-objects>`_.
+<https://scikit-learn.org/stable/developers/develop.html#apis-of-scikit-learn-objects>`_.
 
 Regression
 ==========
@@ -139,7 +138,7 @@ you have to implement
 and
 :meth:`AutoSklearnRegressionAlgorithm.predict() <autosklearn.pipeline.components.base.AutoSklearnRegressionAlgorithm.predict>`
 . These are an implementation of the `scikit-learn predictor API
-<http://scikit-learn.org/stable/developers/index.html#apis-of-scikit-learn-objects>`_.
+<https://scikit-learn.org/stable/developers/develop.html#apis-of-scikit-learn-objects>`_.
 
 Feature Preprocessing
 =====================
@@ -150,4 +149,4 @@ you have to implement
 and
 :meth:`AutoSklearnPreprocessingAlgorithm.transform() <autosklearn.pipeline.components.base.AutoSklearnPreprocessingAlgorithm.transform>`
 . These are an implementation of the `scikit-learn predictor API
-<http://scikit-learn.org/stable/developers/index.html#apis-of-scikit-learn-objects>`_.
+<https://scikit-learn.org/stable/developers/develop.html#apis-of-scikit-learn-objects>`_.

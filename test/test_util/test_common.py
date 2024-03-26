@@ -1,8 +1,9 @@
 # -*- encoding: utf-8 -*-
 import os
-import unittest
 
-from autosklearn.util import check_pid
+from autosklearn.util.common import check_pid
+
+import unittest
 
 
 class TestUtilsCommon(unittest.TestCase):
@@ -17,5 +18,6 @@ class TestUtilsCommon(unittest.TestCase):
         exists = check_pid(our_pid)
         self.assertFalse(exists)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

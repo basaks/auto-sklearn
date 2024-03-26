@@ -1,5 +1,6 @@
 import itertools
 import logging
+
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -13,11 +14,13 @@ def create_regression_dataset(metafeatures, experiments):
         experiment = experiments[dataset_name]
         mf = metafeatures.loc[dataset_name]
         for i, run in enumerate(experiment):
-            x1 = pd.Series(data=[run.params[param] for param in run.params],
-                           index=run.params.keys())
+            x1 = pd.Series(
+                data=[run.params[param] for param in run.params],
+                index=run.params.keys(),
+            )
             x2 = mf
             X.append(x1.append(x2))
-            X_indices.append('%s_%d' % (dataset_name, i))
+            X_indices.append("%s_%d" % (dataset_name, i))
             Y.append(run.result)
     X = pd.DataFrame(X, index=X_indices)
     Y = pd.DataFrame(Y, index=X_indices)
@@ -42,8 +45,7 @@ def create_predict_spearman_rank(metafeatures, experiments, iterator):
             cross_product.append(cross)
     else:
         raise NotImplementedError(iterator)
-    logging.info("Create spearman rank dataset without CV data and %s",
-                iterator)
+    logging.info("Create spearman rank dataset without CV data and %s", iterator)
     logging.info("Using %d datasets", len(dataset_names))
     logging.info("This will results in %d training points", len(cross_product))
 
@@ -68,19 +70,24 @@ def create_predict_spearman_rank(metafeatures, experiments, iterator):
         responses_1 = np.zeros((len(experiments_1)), dtype=np.float64)
         responses_2 = np.zeros((len(experiments_1)), dtype=np.float64)
 
-        for idx, zipped in enumerate(zip(
+        for idx, zipped in enumerate(
+            zip(
                 sorted(experiments_1, key=lambda t: str(t.configuration)),
-                sorted(experiments_2, key=lambda t: str(t.configuration)))):
+                sorted(experiments_2, key=lambda t: str(t.configuration)),
+            )
+        ):
             # Test if the order of the params is the same
             exp_1, exp_2 = zipped
             print(exp_1.configuration, exp_2.configuration)
-            assert exp_1.configuration == exp_2.configuration,\
-                (experiments_1, experiments_2)
+            assert exp_1.configuration == exp_2.configuration, (
+                experiments_1,
+                experiments_2,
+            )
             responses_1[idx] = exp_1.result if np.isfinite(exp_1.result) else 1
             responses_2[idx] = exp_2.result if np.isfinite(exp_2.result) else 1
 
         rho, p = scipy.stats.spearmanr(responses_1, responses_2)
-        #rho, p = scipy.stats.kendalltau(responses_1, responses_2)
+        # rho, p = scipy.stats.kendalltau(responses_1, responses_2)
         if not np.isfinite(rho):
             rho = 0
 
@@ -92,9 +99,11 @@ def create_predict_spearman_rank(metafeatures, experiments, iterator):
     logging.info("Metafeatures %s", metafeatures.shape)
     logging.info("X.shape %s", X.shape)
     logging.info("Y.shape %s", Y.shape)
-    assert X.shape == (len(cross_product), metafeatures.shape[1] * 2), \
-        (X.shape, (len(cross), metafeatures.shape[1] * 2))
-    assert Y.shape == (len(cross_product), )
+    assert X.shape == (len(cross_product), metafeatures.shape[1] * 2), (
+        X.shape,
+        (len(cross), metafeatures.shape[1] * 2),
+    )
+    assert Y.shape == (len(cross_product),)
     # train sklearn regressor (tree) with 10fold CV
     indices = range(len(X))
     np_rs = np.random.RandomState(42)
@@ -104,8 +113,7 @@ def create_predict_spearman_rank(metafeatures, experiments, iterator):
     return X, Y
 
 
-def create_predict_spearman_rank_with_cv(cv_metafeatures, cv_experiments,
-                                         iterator):
+def create_predict_spearman_rank_with_cv(cv_metafeatures, cv_experiments, iterator):
     X = []
     Y = []
     Y_names = []
@@ -129,14 +137,18 @@ def create_predict_spearman_rank_with_cv(cv_metafeatures, cv_experiments,
 
     logging.info("Create spearman rank dataset with CV data %s", iterator)
     logging.info("Using %d datasets", len(dataset_names))
-    logging.info("This will results in %d training points",
-        (len(cross_product) * len(folds_product)))
+    logging.info(
+        "This will results in %d training points",
+        len(cross_product) * len(folds_product),
+    )
     logging.info("Length of dataset crossproduct %s", len(cross_product))
     logging.info("Length of folds crossproduct %s", len(folds_product))
 
     # Create inputs and targets
     for i, cross in enumerate(cross_product):
-        print("%d/%d: %s" % (i, len(cross_product), cross),)
+        print(
+            "%d/%d: %s" % (i, len(cross_product), cross),
+        )
         for folds in folds_product:
             name = "%s-%d_%s-%d" % (cross[0], folds[0], cross[1], folds[1])
             mf_1 = cv_metafeatures[cross[0]][folds[0]]
@@ -186,6 +198,7 @@ def create_predict_spearman_rank_with_cv(cv_metafeatures, cv_experiments,
     X = X.iloc[indices]
     Y = Y.iloc[indices]
     return X, Y
+
 
 """
 def create_smac_warmstart_files(context, dataset, output_dir, num_warmstarts):
@@ -267,7 +280,7 @@ def create_smac_files_file(cv_metafeatures, cv_experiments, dataset,
         train_instances_file.seek(0)
         for line in train_instances_file:
             fh.write(line)
-"""
+"""  # noqa: E501
 
 
 if __name__ == "__main__":
@@ -351,8 +364,8 @@ if __name__ == "__main__":
     # with the adjustment of Yogotama and Mann
 
     """
-    #X, Y = create_regression_dataset(metafeatures, experiments)
-    #with open("regression_dataset.pkl", "w") as fh:
+    # X, Y = create_regression_dataset(metafeatures, experiments)
+    # with open("regression_dataset.pkl", "w") as fh:
     #    cPickle.dump((X, Y, metafeatures), fh, -1)
 
     """
@@ -390,6 +403,3 @@ if __name__ == "__main__":
     with open(spearman_rank_file, "w") as fh:
         cPickle.dump((X, Y, metafeatures), fh, -1)
     """
-
-
-

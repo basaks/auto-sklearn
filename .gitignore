@@ -1,7 +1,12 @@
 # Documentation
-docs/build/*
+doc/build/*
+doc/examples
 
 *.py[cod]
+
+# Exmaples
+# examples 40_advanced generate a tmp_folder
+examples/40_advanced/tmp_folder
 
 # C extensions
 *.c
@@ -27,13 +32,20 @@ __pycache__
 pip-log.txt
 
 # Unit test / coverage reports
+.noseids
+nosetests.xml
 htmlcov
 .coverage
 .tox
-nosetests.xml
+
+# Pytest cache
+.pytest_cache
 
 # pycharm
 .idea
+
+# VS code
+.vscode/
 
 # Others
 *~
@@ -49,3 +61,28 @@ num_run
 number_submission
 .pypirc
 dmypy.json
+*.log
+
+# Dask created work space
+dask-worker-space
+
+# Python distribution generated files
+.eggs
+
+# Unit test / coverage reports
+htmlcov/
+cover
+coverage
+htmlcov
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+.hypothesis/
+prof/
+
+# Mypy
+.mypy_cache/

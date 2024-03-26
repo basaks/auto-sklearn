@@ -1,7 +1,6 @@
 import sklearn.gaussian_process
 
-from autosklearn.pipeline.components.regression.gaussian_process import \
-    GaussianProcess
+from autosklearn.pipeline.components.regression.gaussian_process import GaussianProcess
 
 from .test_base import BaseRegressionComponentTest
 
@@ -11,12 +10,12 @@ class GaussianProcessComponentTest(BaseRegressionComponentTest):
     __test__ = True
 
     res = dict()
-    res["default_boston_le_ge"] = [0.6, 0.4]
+    res["default_boston_le_ge"] = [0.6, 0.2]
     res["default_boston_places"] = 1
     res["default_boston_iterative"] = None
     res["default_boston_sparse"] = None
     res["default_boston_iterative_sparse"] = None
-    res["default_diabetes"] = -7.4131230585194885e-06
+    res["default_diabetes"] = -0.017256687184589836
     res["default_diabetes_iterative"] = None
     res["default_diabetes_sparse"] = None
     res["default_diabetes_iterative_sparse"] = None

@@ -1,9 +1,7 @@
-import unittest
-
 import numpy as np
 
 from autosklearn.pipeline.components.feature_preprocessing.densifier import Densifier
-from autosklearn.pipeline.util import _test_preprocessing, PreprocessingTestCase
+from autosklearn.pipeline.util import PreprocessingTestCase, _test_preprocessing
 
 
 class DensifierComponentTest(PreprocessingTestCase):
@@ -15,4 +13,3 @@ class DensifierComponentTest(PreprocessingTestCase):
 
     def test_preprocessing_dtype(self):
         super(DensifierComponentTest, self)._test_preprocessing_dtype(Densifier)
-

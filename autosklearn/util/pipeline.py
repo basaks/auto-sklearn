@@ -1,70 +1,136 @@
 # -*- encoding: utf-8 -*-
-from autosklearn.constants import *
+from typing import Dict, List, Optional, Union
+
+import numpy as np
+from ConfigSpace.configuration_space import ConfigurationSpace
+
+from autosklearn.constants import (
+    BINARY_CLASSIFICATION,
+    MULTICLASS_CLASSIFICATION,
+    MULTILABEL_CLASSIFICATION,
+    MULTIOUTPUT_REGRESSION,
+    REGRESSION_TASKS,
+)
+from autosklearn.data.abstract_data_manager import AbstractDataManager
 from autosklearn.pipeline.classification import SimpleClassificationPipeline
 from autosklearn.pipeline.regression import SimpleRegressionPipeline
 
-
-__all__ = [
-    'get_configuration_space',
-    'get_class',
-]
+__all__ = ["get_configuration_space"]
 
 
-def get_configuration_space(info,
-                            include_estimators=None,
-                            exclude_estimators=None,
-                            include_preprocessors=None,
-                            exclude_preprocessors=None):
-    exclude = dict()
-    include = dict()
-    if include_preprocessors is not None and \
-            exclude_preprocessors is not None:
-        raise ValueError('Cannot specify include_preprocessors and '
-                         'exclude_preprocessors.')
-    elif include_preprocessors is not None:
-        include['preprocessor'] = include_preprocessors
-    elif exclude_preprocessors is not None:
-        exclude['preprocessor'] = exclude_preprocessors
+def get_configuration_space(
+    datamanager: AbstractDataManager,
+    include: Optional[Dict[str, List[str]]] = None,
+    exclude: Optional[Dict[str, List[str]]] = None,
+    random_state: Optional[Union[int, np.random.RandomState]] = None,
+) -> ConfigurationSpace:
+    """Get the configuration of a pipeline given some dataset info
 
-    if include_estimators is not None and \
-            exclude_estimators is not None:
-        raise ValueError('Cannot specify include_estimators and '
-                         'exclude_estimators.')
-    elif include_estimators is not None:
-        if info['task'] in CLASSIFICATION_TASKS:
-            include['classifier'] = include_estimators
-        elif info['task'] in REGRESSION_TASKS:
-            include['regressor'] = include_estimators
-        else:
-            raise ValueError(info['task'])
-    elif exclude_estimators is not None:
-        if info['task'] in CLASSIFICATION_TASKS:
-            exclude['classifier'] = exclude_estimators
-        elif info['task'] in REGRESSION_TASKS:
-            exclude['regressor'] = exclude_estimators
-        else:
-            raise ValueError(info['task'])
+    Parameters
+    ----------
+    datamanager: AbstractDataManager
+        AbstractDataManager object storing all important information about the dataset
 
-    if info['task'] in REGRESSION_TASKS:
-        return _get_regression_configuration_space(info, include, exclude)
+    include: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to include for each pipeline step
+
+    exclude: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to exclude for each pipeline step
+
+    random_state: Optional[Union[int, np.random.Randomstate]] = None
+        The random state to use for seeding the ConfigSpace
+
+    Returns
+    -------
+    ConfigurationSpace
+        The configuration space for the pipeline
+    """
+    if datamanager.info["task"] in REGRESSION_TASKS:
+        return _get_regression_configuration_space(
+            datamanager, include, exclude, random_state
+        )
     else:
-        return _get_classification_configuration_space(info, include, exclude)
+        return _get_classification_configuration_space(
+            datamanager, include, exclude, random_state
+        )
 
 
-def _get_regression_configuration_space(info, include, exclude):
+def _get_regression_configuration_space(
+    datamanager: AbstractDataManager,
+    include: Optional[Dict[str, List[str]]],
+    exclude: Optional[Dict[str, List[str]]],
+    random_state: Optional[Union[int, np.random.RandomState]] = None,
+) -> ConfigurationSpace:
+    """Get the configuration of a regression pipeline given some dataset info
+
+    Parameters
+    ----------
+    datamanager: AbstractDataManager
+        AbstractDataManager object storing all important information about the dataset
+
+    include: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to include for each pipeline step
+
+    exclude: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to exclude for each pipeline step
+
+    random_state: Optional[Union[int, np.random.Randomstate]] = None
+        The random state to use for seeding the ConfigSpace
+
+    Returns
+    -------
+    ConfigurationSpace
+        The configuration space for the regression pipeline
+    """
+    task_type = datamanager.info["task"]
     sparse = False
-    if info['is_sparse'] == 1:
+    multioutput = False
+    if task_type == MULTIOUTPUT_REGRESSION:
+        multioutput = True
+
+    if datamanager.info["is_sparse"] == 1:
         sparse = True
+
+    dataset_properties = {"multioutput": multioutput, "sparse": sparse}
+
     configuration_space = SimpleRegressionPipeline(
-        dataset_properties={'sparse': sparse},
+        feat_type=datamanager.feat_type,
+        dataset_properties=dataset_properties,
         include=include,
-        exclude=exclude
-    ).get_hyperparameter_search_space()
+        exclude=exclude,
+        random_state=random_state,
+    ).get_hyperparameter_search_space(feat_type=datamanager.feat_type)
     return configuration_space
 
 
-def _get_classification_configuration_space(info, include, exclude):
-    task_type = info['task']
+def _get_classification_configuration_space(
+    datamanager: AbstractDataManager,
+    include: Optional[Dict[str, List[str]]],
+    exclude: Optional[Dict[str, List[str]]],
+    random_state: Optional[Union[int, np.random.RandomState]] = None,
+) -> ConfigurationSpace:
+    """Get the configuration of a classification pipeline given some dataset info
+
+    Parameters
+    ----------
+    datamanager: AbstractDataManager
+         AbstractDataManager object storing all important information about the dataset
+
+    include: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to include for each pipeline step
+
+    exclude: Optional[Dict[str, List[str]]] = None
+        A dictionary of what components to exclude for each pipeline step
+
+    random_state: Optional[Union[int, np.random.Randomstate]] = None
+        The random state to use for seeding the ConfigSpace
+
+    Returns
+    -------
+    ConfigurationSpace
+        The configuration space for the classification pipeline
+    """
+    task_type = datamanager.info["task"]
 
     multilabel = False
     multiclass = False
@@ -72,30 +138,24 @@ def _get_classification_configuration_space(info, include, exclude):
 
     if task_type == MULTILABEL_CLASSIFICATION:
         multilabel = True
-    if task_type == REGRESSION:
-        raise NotImplementedError()
     if task_type == MULTICLASS_CLASSIFICATION:
         multiclass = True
     if task_type == BINARY_CLASSIFICATION:
         pass
 
-    if info['is_sparse'] == 1:
+    if datamanager.info["is_sparse"] == 1:
         sparse = True
 
     dataset_properties = {
-        'multilabel': multilabel,
-        'multiclass': multiclass,
-        'sparse': sparse
+        "multilabel": multilabel,
+        "multiclass": multiclass,
+        "sparse": sparse,
     }
 
     return SimpleClassificationPipeline(
+        feat_type=datamanager.feat_type,
         dataset_properties=dataset_properties,
-        include=include, exclude=exclude).\
-        get_hyperparameter_search_space()
-
-
-def get_class(info):
-    if info['task'] in REGRESSION_TASKS:
-        return SimpleRegressionPipeline
-    else:
-        return SimpleClassificationPipeline
+        include=include,
+        exclude=exclude,
+        random_state=random_state,
+    ).get_hyperparameter_search_space(feat_type=datamanager.feat_type)

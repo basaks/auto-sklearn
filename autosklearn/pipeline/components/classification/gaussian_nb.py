@@ -1,67 +1,36 @@
-import numpy as np
+from typing import Optional
 
+import numpy as np
 from ConfigSpace.configuration_space import ConfigurationSpace
 
-from autosklearn.pipeline.components.base import (
-    AutoSklearnClassificationAlgorithm,
-    IterativeComponent,
-)
-from autosklearn.pipeline.constants import *
+from autosklearn.askl_typing import FEAT_TYPE_TYPE
+from autosklearn.pipeline.components.base import AutoSklearnClassificationAlgorithm
+from autosklearn.pipeline.constants import DENSE, PREDICTIONS, UNSIGNED_DATA
 
 
-class GaussianNB(IterativeComponent, AutoSklearnClassificationAlgorithm):
-
+class GaussianNB(AutoSklearnClassificationAlgorithm):
     def __init__(self, random_state=None, verbose=0):
 
         self.random_state = random_state
         self.verbose = int(verbose)
         self.estimator = None
 
-    def iterative_fit(self, X, y, n_iter=1, refit=False):
+    def fit(self, X, y):
         import sklearn.naive_bayes
 
-        if refit:
-            self.estimator = None
-
-        if self.estimator is None:
-            self.n_iter = 0
-            self.fully_fit_ = False
-            self.estimator = sklearn.naive_bayes.GaussianNB()
-            self.classes_ = np.unique(y.astype(int))
+        self.estimator = sklearn.naive_bayes.GaussianNB()
+        self.classes_ = np.unique(y.astype(int))
 
         # Fallback for multilabel classification
         if len(y.shape) > 1 and y.shape[1] > 1:
             import sklearn.multiclass
-            self.estimator.n_iter = self.n_iter
+
             self.estimator = sklearn.multiclass.OneVsRestClassifier(
-                self.estimator, n_jobs=1)
-            self.estimator.fit(X, y)
-            self.fully_fit_ = True
-        else:
-            for iter in range(n_iter):
-                start = min(self.n_iter * 1000, y.shape[0])
-                stop = min((self.n_iter + 1) * 1000, y.shape[0])
-                if X[start:stop].shape[0] == 0:
-                    self.fully_fit_ = True
-                    break
-
-                self.estimator.partial_fit(X[start:stop], y[start:stop],
-                                           self.classes_)
-                self.n_iter += 1
-
-                if stop >= len(y):
-                    self.fully_fit_ = True
-                    break
+                self.estimator, n_jobs=1
+            )
+        self.estimator.fit(X, y)
 
         return self
-
-    def configuration_fully_fitted(self):
-        if self.estimator is None:
-            return False
-        elif not hasattr(self, 'fully_fit_'):
-            return False
-        else:
-            return self.fully_fit_
 
     def predict(self, X):
         if self.estimator is None:
@@ -75,18 +44,22 @@ class GaussianNB(IterativeComponent, AutoSklearnClassificationAlgorithm):
 
     @staticmethod
     def get_properties(dataset_properties=None):
-        return {'shortname': 'GaussianNB',
-                'name': 'Gaussian Naive Bayes classifier',
-                'handles_regression': False,
-                'handles_classification': True,
-                'handles_multiclass': True,
-                'handles_multilabel': True,
-                'is_deterministic': True,
-                'input': (DENSE, UNSIGNED_DATA),
-                'output': (PREDICTIONS,)}
+        return {
+            "shortname": "GaussianNB",
+            "name": "Gaussian Naive Bayes classifier",
+            "handles_regression": False,
+            "handles_classification": True,
+            "handles_multiclass": True,
+            "handles_multilabel": True,
+            "handles_multioutput": False,
+            "is_deterministic": True,
+            "input": (DENSE, UNSIGNED_DATA),
+            "output": (PREDICTIONS,),
+        }
 
     @staticmethod
-    def get_hyperparameter_search_space(dataset_properties=None):
+    def get_hyperparameter_search_space(
+        feat_type: Optional[FEAT_TYPE_TYPE] = None, dataset_properties=None
+    ):
         cs = ConfigurationSpace()
         return cs
-

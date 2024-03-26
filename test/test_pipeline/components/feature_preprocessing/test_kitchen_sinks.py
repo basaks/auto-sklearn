@@ -1,9 +1,9 @@
+from autosklearn.pipeline.components.feature_preprocessing.kitchen_sinks import (
+    RandomKitchenSinks,
+)
+from autosklearn.pipeline.util import PreprocessingTestCase, _test_preprocessing
+
 import unittest
-
-import numpy as np
-
-from autosklearn.pipeline.components.feature_preprocessing.kitchen_sinks import RandomKitchenSinks
-from autosklearn.pipeline.util import _test_preprocessing, PreprocessingTestCase
 
 
 class KitchenSinkComponent(PreprocessingTestCase):
@@ -15,5 +15,4 @@ class KitchenSinkComponent(PreprocessingTestCase):
 
     @unittest.skip("Right now, the RBFSampler returns a float64 array!")
     def test_preprocessing_dtype(self):
-        super(KitchenSinkComponent,
-              self)._test_preprocessing_dtype(RandomKitchenSinks)
+        super(KitchenSinkComponent, self)._test_preprocessing_dtype(RandomKitchenSinks)

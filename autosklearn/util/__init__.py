@@ -1,6 +1,7 @@
 # -*- encoding: utf-8 -*-
-from .common import *
-from .logging_ import *
-from .stopwatch import *
-from .data import *
-from .backend import *
+import re
+
+SUBPATTERN = r"((?P<operation%d>==|>=|>|<)(?P<version%d>(\d+)?(\.[a-zA-Z0-9]+)?(\.[a-zA-Z0-9]+)?))"  # noqa: E501
+RE_PATTERN = re.compile(
+    r"^(?P<name>[\w\-]+)%s?(,%s)?$" % (SUBPATTERN % (1, 1), SUBPATTERN % (2, 2))
+)

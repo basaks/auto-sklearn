@@ -1,25 +1,20 @@
-from collections import OrderedDict
+from typing import Optional, Union
+
 import copy
 from itertools import product
 
 import numpy as np
+from ConfigSpace.configuration_space import Configuration, ConfigurationSpace
+from ConfigSpace.forbidden import ForbiddenAndConjunction, ForbiddenEqualsClause
 from sklearn.base import RegressorMixin
 
-from ConfigSpace.forbidden import ForbiddenEqualsClause, ForbiddenAndConjunction
-from ConfigSpace.configuration_space import ConfigurationSpace
-from autosklearn.pipeline.components import regression as \
-    regression_components
-from autosklearn.pipeline.components.data_preprocessing import rescaling as \
-    rescaling_components
-from autosklearn.pipeline.components.data_preprocessing.imputation.imputation \
-    import Imputation
-from autosklearn.pipeline.components.data_preprocessing.one_hot_encoding \
-    import OHEChoice
-from autosklearn.pipeline.components import feature_preprocessing as \
-    feature_preprocessing_components
-from autosklearn.pipeline.components.data_preprocessing.variance_threshold.variance_threshold \
-    import VarianceThreshold
+from autosklearn.askl_typing import FEAT_TYPE_TYPE
 from autosklearn.pipeline.base import BasePipeline
+from autosklearn.pipeline.components import (
+    feature_preprocessing as feature_preprocessing_components,
+)
+from autosklearn.pipeline.components import regression as regression_components
+from autosklearn.pipeline.components.data_preprocessing import DataPreprocessorChoice
 from autosklearn.pipeline.constants import SPARSE
 
 
@@ -41,7 +36,7 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
     config : ConfigSpace.configuration_space.Configuration
         The configuration to evaluate.
 
-    random_state : int, RandomState instance or None, optional (default=None)
+    random_state : Optional[int | RandomState]
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance
@@ -70,27 +65,45 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
     --------
 
     """
-    def __init__(self, config=None, pipeline=None, dataset_properties=None,
-                 include=None, exclude=None, random_state=None,
-                 init_params=None):
+
+    def __init__(
+        self,
+        config: Optional[Configuration] = None,
+        feat_type: Optional[FEAT_TYPE_TYPE] = None,
+        steps=None,
+        dataset_properties=None,
+        include=None,
+        exclude=None,
+        random_state: Optional[Union[int, np.random.RandomState]] = None,
+        init_params=None,
+    ):
         self._output_dtype = np.float32
+        if dataset_properties is None:
+            dataset_properties = dict()
+        if "target_type" not in dataset_properties:
+            dataset_properties["target_type"] = "regression"
         super().__init__(
-            config=config, pipeline=pipeline,
+            feat_type=feat_type,
+            config=config,
+            steps=steps,
             dataset_properties=dataset_properties,
-            include=include, exclude=exclude, random_state=random_state,
-            init_params=init_params)
+            include=include,
+            exclude=exclude,
+            random_state=random_state,
+            init_params=init_params,
+        )
 
     def fit_estimator(self, X, y, **fit_params):
         self.y_max_ = np.nanmax(y)
         self.y_min_ = np.nanmin(y)
-        return super(SimpleRegressionPipeline, self).fit_estimator(
-            X, y, **fit_params)
+        return super(SimpleRegressionPipeline, self).fit_estimator(X, y, **fit_params)
 
     def iterative_fit(self, X, y, n_iter=1, **fit_params):
         self.y_max_ = np.nanmax(y)
         self.y_min_ = np.nanmin(y)
         return super(SimpleRegressionPipeline, self).iterative_fit(
-            X, y, n_iter=n_iter, **fit_params)
+            X, y, n_iter=n_iter, **fit_params
+        )
 
     def predict(self, X, batch_size=None):
         y = super().predict(X, batch_size=batch_size)
@@ -101,51 +114,27 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
             y[y < (0.5 * self.y_min_)] = 0.5 * self.y_min_
         return y
 
-    def get_available_components(self, available_comp, data_prop, inc, exc):
-        components_dict = OrderedDict()
-        for name in available_comp:
-            if inc is not None and name not in inc:
-                continue
-            elif exc is not None and name in exc:
-                continue
-            entry = available_comp[name]
-
-            if not entry.get_properties()['handles_regression']:
-                continue
-            components_dict[name] = entry
-        return components_dict
-
-    def _get_hyperparameter_search_space(self, include=None, exclude=None,
-                                         dataset_properties=None):
+    def _get_hyperparameter_search_space(
+        self,
+        feat_type: Optional[FEAT_TYPE_TYPE] = None,
+        include=None,
+        exclude=None,
+        dataset_properties=None,
+    ):
         """Return the configuration space for the CASH problem.
 
         Parameters
         ----------
-        include_estimators : list of str
-            If include_estimators is given, only the regressors specified
+        include : dict
+            If include is given, only the modules specified for nodes
             are used. Specify them by their module name; e.g., to include
-            only the SVM use :python:`include_regressors=['svr']`.
-            Cannot be used together with :python:`exclude_regressors`.
+            only the SVM use :python:`include={'regressor':['svr']}`.
 
-        exclude_estimators : list of str
-            If exclude_estimators is given, only the regressors specified
+        exclude : dict
+            If exclude is given, only the components specified for nodes
             are used. Specify them by their module name; e.g., to include
             all regressors except the SVM use
-            :python:`exclude_regressors=['svr']`.
-            Cannot be used together with :python:`include_regressors`.
-
-        include_preprocessors : list of str
-            If include_preprocessors is given, only the preprocessors specified
-            are used. Specify them by their module name; e.g., to include
-            only the PCA use :python:`include_preprocessors=['pca']`.
-            Cannot be used together with :python:`exclude_preprocessors`.
-
-        exclude_preprocessors : list of str
-            If include_preprocessors is given, only the preprocessors specified
-            are used. Specify them by their module name; e.g., to include
-            all preprocessors except the PCA use
-            :python:`exclude_preprocessors=['pca']`.
-            Cannot be used together with :python:`include_preprocessors`.
+            :python:`exclude=['regressor': 'svr']`.
 
         Returns
         -------
@@ -156,46 +145,58 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
 
         if dataset_properties is None or not isinstance(dataset_properties, dict):
             dataset_properties = dict()
-        if not 'target_type' in dataset_properties:
-            dataset_properties['target_type'] = 'regression'
-        if dataset_properties['target_type'] != 'regression':
-            dataset_properties['target_type'] = 'regression'
+        if "target_type" not in dataset_properties:
+            dataset_properties["target_type"] = "regression"
+        if dataset_properties["target_type"] != "regression":
+            dataset_properties["target_type"] = "regression"
 
-        if 'sparse' not in dataset_properties:
-            # This dataset is probaby dense
-            dataset_properties['sparse'] = False
+        if "sparse" not in dataset_properties:
+            # This dataset is probably dense
+            dataset_properties["sparse"] = False
 
         cs = self._get_base_search_space(
-            cs=cs, dataset_properties=dataset_properties,
-            exclude=exclude, include=include, pipeline=self.steps)
+            cs=cs,
+            feat_type=feat_type,
+            dataset_properties=dataset_properties,
+            exclude=exclude,
+            include=include,
+            pipeline=self.steps,
+        )
 
-        regressors = cs.get_hyperparameter('regressor:__choice__').choices
-        preprocessors = cs.get_hyperparameter('preprocessor:__choice__').choices
+        regressors = cs.get_hyperparameter("regressor:__choice__").choices
+        preprocessors = cs.get_hyperparameter("feature_preprocessor:__choice__").choices
         available_regressors = self._final_estimator.get_available_components(
-            dataset_properties)
+            dataset_properties
+        )
 
-        possible_default_regressor = copy.copy(list(
-            available_regressors.keys()))
-        default = cs.get_hyperparameter('regressor:__choice__').default_value
-        del possible_default_regressor[
-            possible_default_regressor.index(default)]
+        possible_default_regressor = copy.copy(list(available_regressors.keys()))
+        default = cs.get_hyperparameter("regressor:__choice__").default_value
+        del possible_default_regressor[possible_default_regressor.index(default)]
 
         # A regressor which can handle sparse data after the densifier is
         # forbidden for memory issues
         for key in regressors:
-            if SPARSE in available_regressors[key].get_properties(dataset_properties=None)['input']:
-                if 'densifier' in preprocessors:
+            if (
+                SPARSE
+                in available_regressors[key].get_properties(dataset_properties=None)[
+                    "input"
+                ]
+            ):
+                if "densifier" in preprocessors:
                     while True:
                         try:
+                            forb_reg = ForbiddenEqualsClause(
+                                cs.get_hyperparameter("regressor:__choice__"), key
+                            )
+                            forb_fpp = ForbiddenEqualsClause(
+                                cs.get_hyperparameter(
+                                    "feature_preprocessor:__choice__"
+                                ),
+                                "densifier",
+                            )
                             cs.add_forbidden_clause(
-                                ForbiddenAndConjunction(
-                                    ForbiddenEqualsClause(
-                                        cs.get_hyperparameter(
-                                            'regressor:__choice__'), key),
-                                    ForbiddenEqualsClause(
-                                        cs.get_hyperparameter(
-                                            'preprocessor:__choice__'), 'densifier')
-                                ))
+                                ForbiddenAndConjunction(forb_reg, forb_fpp)
+                            )
                             # Success
                             break
                         except ValueError:
@@ -204,15 +205,26 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
                                 default = possible_default_regressor.pop()
                             except IndexError:
                                 raise ValueError(
-                                    "Cannot find a legal default configuration.")
+                                    "Cannot find a legal default configuration."
+                                )
                             cs.get_hyperparameter(
-                                'regressor:__choice__').default_value = default
+                                "regressor:__choice__"
+                            ).default_value = default
 
         # which would take too long
         # Combinations of tree-based models with feature learning:
-        regressors_ = ["adaboost", "decision_tree", "extra_trees",
-                       "gaussian_process", "gradient_boosting",
-                       "k_nearest_neighbors", "random_forest", "xgradient_boosting"]
+        regressors_ = [
+            "adaboost",
+            "ard_regression",
+            "decision_tree",
+            "extra_trees",
+            "gaussian_process",
+            "gradient_boosting",
+            "k_nearest_neighbors",
+            "libsvm_svr",
+            "mlp",
+            "random_forest",
+        ]
         feature_learning_ = ["kitchen_sinks", "kernel_pca", "nystroem_sampler"]
 
         for r, f in product(regressors_, feature_learning_):
@@ -222,11 +234,19 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
                 continue
             while True:
                 try:
-                    cs.add_forbidden_clause(ForbiddenAndConjunction(
-                        ForbiddenEqualsClause(cs.get_hyperparameter(
-                            "regressor:__choice__"), r),
-                        ForbiddenEqualsClause(cs.get_hyperparameter(
-                            "preprocessor:__choice__"), f)))
+                    cs.add_forbidden_clause(
+                        ForbiddenAndConjunction(
+                            ForbiddenEqualsClause(
+                                cs.get_hyperparameter("regressor:__choice__"), r
+                            ),
+                            ForbiddenEqualsClause(
+                                cs.get_hyperparameter(
+                                    "feature_preprocessor:__choice__"
+                                ),
+                                f,
+                            ),
+                        )
+                    )
                     break
                 except KeyError:
                     break
@@ -235,47 +255,56 @@ class SimpleRegressionPipeline(RegressorMixin, BasePipeline):
                     try:
                         default = possible_default_regressor.pop()
                     except IndexError:
-                        raise ValueError(
-                            "Cannot find a legal default configuration.")
+                        raise ValueError("Cannot find a legal default configuration.")
                     cs.get_hyperparameter(
-                        'regressor:__choice__').default_value = default
+                        "regressor:__choice__"
+                    ).default_value = default
 
-        self.configuration_space_ = cs
-        self.dataset_properties_ = dataset_properties
+        self.configuration_space = cs
+        self.dataset_properties = dataset_properties
         return cs
 
     def _get_estimator_components(self):
         return regression_components._regressors
 
-    def _get_pipeline(self, init_params=None):
+    def _get_pipeline_steps(
+        self, dataset_properties, feat_type: Optional[FEAT_TYPE_TYPE] = None
+    ):
         steps = []
 
-        default_dataset_properties = {'target_type': 'regression'}
-
-        # Add the always active preprocessing components
-        if init_params is not None and 'one_hot_encoding' in init_params:
-            ohe_init_params = init_params['one_hot_encoding']
-            if 'categorical_features' in ohe_init_params:
-                categorical_features = ohe_init_params['categorical_features']
-        else:
-            categorical_features = None
+        default_dataset_properties = {"target_type": "regression"}
+        if dataset_properties is not None and isinstance(dataset_properties, dict):
+            default_dataset_properties.update(dataset_properties)
 
         steps.extend(
-            [["categorical_encoding", OHEChoice(default_dataset_properties)],
-             ["imputation", Imputation()],
-             ["variance_threshold", VarianceThreshold()],
-             ["rescaling", rescaling_components.RescalingChoice(
-                 default_dataset_properties)]])
+            [
+                [
+                    "data_preprocessor",
+                    DataPreprocessorChoice(
+                        feat_type=feat_type,
+                        dataset_properties=default_dataset_properties,
+                        random_state=self.random_state,
+                    ),
+                ],
+                [
+                    "feature_preprocessor",
+                    feature_preprocessing_components.FeaturePreprocessorChoice(
+                        feat_type=feat_type,
+                        dataset_properties=default_dataset_properties,
+                        random_state=self.random_state,
+                    ),
+                ],
+                [
+                    "regressor",
+                    regression_components.RegressorChoice(
+                        feat_type=feat_type,
+                        dataset_properties=default_dataset_properties,
+                        random_state=self.random_state,
+                    ),
+                ],
+            ]
+        )
 
-        # Add the preprocessing component
-        steps.append(['preprocessor',
-                      feature_preprocessing_components.FeaturePreprocessorChoice(
-                          default_dataset_properties)])
-
-        # Add the classification component
-        steps.append(['regressor',
-                      regression_components.RegressorChoice(
-                          default_dataset_properties)])
         return steps
 
     def _get_estimator_hyperparameter_name(self):
